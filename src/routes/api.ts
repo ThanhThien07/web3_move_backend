@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { getBooks } from '../controllers/bookController.js';
+import { getBooks, addBook, updateBook, deleteBook } from '../controllers/bookController.js';
 import { verifyPurchase, getPurchases } from '../controllers/purchaseController.js';
 import { register, login, updateWallet } from '../controllers/authController.js';
 import { checkin } from '../controllers/faucetController.js';
@@ -8,6 +8,10 @@ import { toggleFavorite, getFavorites } from '../controllers/favoritesController
 const router: Router = express.Router();
 
 router.get('/books', getBooks);
+router.post('/books', addBook);
+router.put('/books/:id', updateBook);
+router.delete('/books/:id', deleteBook);
+
 router.post('/verify-purchase', verifyPurchase);
 router.get('/purchases', getPurchases);
 
