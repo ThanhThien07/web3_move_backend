@@ -4,6 +4,7 @@ import { verifyPurchase, getPurchases } from '../controllers/purchaseController.
 import { register, login, updateWallet } from '../controllers/authController.js';
 import { checkin } from '../controllers/faucetController.js';
 import { toggleFavorite, getFavorites } from '../controllers/favoritesController.js';
+import { getMessages, sendMessage } from '../controllers/chatController.js';
 
 const router: Router = express.Router();
 
@@ -23,5 +24,7 @@ router.post('/favorites/toggle', toggleFavorite);
 router.get('/favorites', getFavorites);
 
 router.post('/faucet/checkin', checkin);
+router.get('/chat/messages/:sessionId', getMessages);
+router.post('/chat/messages', sendMessage);
 
 export default router;

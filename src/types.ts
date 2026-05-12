@@ -26,8 +26,29 @@ export interface User {
     favorites?: string[];
 }
 
+export interface ChatMessage {
+    id: string;
+    content: string;
+    isAdmin: boolean;
+    timestamp: string;
+}
+
+export interface ChatSession {
+    id: string;
+    customerName: string;
+    messages: ChatMessage[];
+    timestamp: string;
+}
+
+export interface AdminUser {
+    username: string;
+    password?: string;
+}
+
 export interface DatabaseSchema {
     books: BookItem[];
     purchases: PurchaseRecord[];
     users: User[];
+    chat_sessions?: ChatSession[];
+    admins?: AdminUser[];
 }
