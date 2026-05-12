@@ -25,7 +25,15 @@ export const register = async (req: Request, res: Response) => {
         db.users.push(newUser);
         await saveDB();
 
-        res.status(201).json({ message: 'User registered successfully', user: { username, wallet_address } });
+        res.status(201).json({ 
+            message: 'User registered successfully', 
+            user: { 
+                username: newUser.username, 
+                wallet_address: newUser.wallet_address,
+                favorites: [],
+                last_checkin: null
+            } 
+        });
     } catch (error) {
         res.status(500).json({ error: 'Internal server error' });
     }
@@ -42,7 +50,11 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        res.status(200).json({ message: 'Login successful', user: { username: user.username, wallet_address: user.wallet_address } });
+        const { password: _, ...userWithoutPassword } = user;
+        res.status(200).json({ 
+            message: 'Login successful', 
+            user: userWithoutPassword
+        });
     } catch (error) {
         res.status(500).json({ error: 'Internal server error' });
     }
