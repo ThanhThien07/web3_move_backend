@@ -1,91 +1,62 @@
-import { Request, Response, NextFunction } from 'express';
-import { getDB, saveDB } from '../config/db.js';
-import { BookItem } from '../types.js';
+import { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-export const getBooks = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DB_PATH = path.join(__dirname, '../../database.json');
+
+// Helper để đọc DB
+const readDB = () => {
+    const data = fs.readFileSync(DB_PATH, 'utf8');
+    return JSON.parse(data);
+};
+
+export const getBooks = async (req: Request, res: Response) => {
     try {
-        const db = getDB();
-        let books = db.books;
+        const db = readDB();
+        const query = req.query.q as string;
 
-        const queryStr = req.query.q as string | undefined;
-        if (queryStr) {
-            const search = queryStr.toLowerCase();
-            books = books.filter(b => b.title.toLowerCase().includes(search));
+        // Tối ưu hóa: Lọc và sắp xếp sách mới nhất lên đầu
+        let books = db.books || [];
+        
+        if (query) {
+            const lowercaseQuery = query.toLowerCase();
+            books = books.filter((book: any) => 
+                book.title.toLowerCase().includes(lowercaseQuery) ||
+                book.author.toLowerCase().includes(lowercaseQuery)
+            );
         }
 
-        res.json({ items: books });
+        // Đảm bảo dữ liệu trả về chuẩn hóa cho Tailwind CSS ở Frontend
+        const optimizedBooks = books.map((book: any) => ({
+            id: book.id,
+            title: book.title,
+            author: book.author,
+            cover_url: book.cover_url,
+            price_mist: book.price_mist,
+            owner_wallet: book.owner_wallet || 'Admin'
+        })).reverse(); // Sách mới nhất hiện lên trước
+
+        res.json(optimizedBooks);
     } catch (error) {
-        next(error);
+        console.error('Get books error:', error);
+        res.status(500).json({ error: 'Failed to fetch books' });
     }
 };
 
-export const addBook = async (req: Request, res: Response): Promise<void> => {
+export const getBookById = async (req: Request, res: Response) => {
     try {
-        const { title, author, cover_url, price_mist, access_url } = req.body;
-        const db = getDB();
-        
-        const newBook: BookItem = {
-            id: `book-${Date.now()}`,
-            title,
-            author,
-            cover_url,
-            price_mist,
-            access_url
-        };
+        const db = readDB();
+        const book = db.books.find((b: any) => b.id === req.params.id);
 
-        db.books.push(newBook);
-        await saveDB();
-
-        res.status(201).json(newBook);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to add book' });
-    }
-};
-
-export const updateBook = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        const { title, author, cover_url, price_mist, access_url } = req.body;
-        const db = getDB();
-        
-        const index = db.books.findIndex(b => b.id === id);
-        if (index === -1) {
-            res.status(404).json({ error: 'Book not found' });
-            return;
+        if (!book) {
+            return res.status(404).json({ error: 'Book not found' });
         }
 
-        db.books[index] = {
-            ...db.books[index],
-            title: title ?? db.books[index].title,
-            author: author ?? db.books[index].author,
-            cover_url: cover_url ?? db.books[index].cover_url,
-            price_mist: price_mist ?? db.books[index].price_mist,
-            access_url: access_url ?? db.books[index].access_url
-        };
-
-        await saveDB();
-        res.json(db.books[index]);
+        res.json(book);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to update book' });
-    }
-};
-
-export const deleteBook = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        const db = getDB();
-        
-        const index = db.books.findIndex(b => b.id === id);
-        if (index === -1) {
-            res.status(404).json({ error: 'Book not found' });
-            return;
-        }
-
-        db.books.splice(index, 1);
-        await saveDB();
-        
-        res.json({ message: 'Book deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete book' });
+        res.status(500).json({ error: 'Failed to fetch book' });
     }
 };
