@@ -11,7 +11,7 @@ export class SuiService {
         return RPC_URLS[network] || RPC_URLS.testnet;
     }
 
-    static async getTransactionBlock(digest: string, network: string = 'testnet', retries: number = 5) {
+    static async getTransactionBlock(digest: string, network: string = 'testnet', retries: number = 10) {
         for (let i = 0; i < retries; i++) {
             try {
                 const response = await fetch(this.getRpcUrl(network), {
@@ -28,12 +28,13 @@ export class SuiService {
                 const data: any = await response.json();
                 
                 if (data.error) {
-                    if (data.error.code === -32602 || data.error.message?.includes('not found')) {
+                    const errMsg = data.error.message || '';
+                    if (data.error.code === -32602 || errMsg.includes('not found') || errMsg.includes('Could not find')) {
                         console.log(`[SuiService] TX ${digest} not found yet, retrying... (${i + 1}/${retries})`);
-                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        await new Promise(resolve => setTimeout(resolve, 2500));
                         continue;
                     }
-                    throw new Error(data.error.message || 'RPC Error');
+                    throw new Error(errMsg || 'RPC Error');
                 }
 
                 return data.result;
@@ -42,7 +43,7 @@ export class SuiService {
                     console.error(`[SuiService] Failed to fetch TX ${digest} after ${retries} attempts:`, error.message);
                     throw error;
                 }
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 2500));
             }
         }
     }
