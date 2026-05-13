@@ -11,29 +11,39 @@ export class SuiService {
         return RPC_URLS[network] || RPC_URLS.testnet;
     }
 
-    static async getTransactionBlock(digest: string, network: string = 'testnet') {
-        try {
-            const response = await fetch(this.getRpcUrl(network), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    jsonrpc: '2.0',
-                    id: 1,
-                    method: 'sui_getTransactionBlock',
-                    params: [digest, { showEffects: true, showInput: true }]
-                })
-            });
+    static async getTransactionBlock(digest: string, network: string = 'testnet', retries: number = 5) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(this.getRpcUrl(network), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'sui_getTransactionBlock',
+                        params: [digest, { showEffects: true, showInput: true }]
+                    })
+                });
 
-            const data: any = await response.json();
-            
-            if (data.error) {
-                throw new Error(data.error.message || 'RPC Error');
+                const data: any = await response.json();
+                
+                if (data.error) {
+                    if (data.error.code === -32602 || data.error.message?.includes('not found')) {
+                        console.log(`[SuiService] TX ${digest} not found yet, retrying... (${i + 1}/${retries})`);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        continue;
+                    }
+                    throw new Error(data.error.message || 'RPC Error');
+                }
+
+                return data.result;
+            } catch (error: any) {
+                if (i === retries - 1) {
+                    console.error(`[SuiService] Failed to fetch TX ${digest} after ${retries} attempts:`, error.message);
+                    throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, 2000));
             }
-
-            return data.result;
-        } catch (error: any) {
-            console.error(`[SuiService] Failed to fetch TX ${digest}:`, error.message);
-            throw error;
         }
     }
 
